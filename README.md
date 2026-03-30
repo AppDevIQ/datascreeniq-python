@@ -4,7 +4,12 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-Real-time data quality screening at the edge. Screen any data payload and get **PASS / WARN / BLOCK** in under 10ms.
+Pipelines don’t fail — they silently corrupt data.
+
+DataScreenIQ acts as a gate before your database, detecting schema drift,
+missing values, and type mismatches in real time.
+
+Real-time data quality screening at the edge. Screen any data payload and get **PASS / WARN / BLOCK** in milli seconds .
 
 ```python
 import datascreeniq as dsiq
