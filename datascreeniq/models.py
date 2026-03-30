@@ -24,14 +24,17 @@ class ScreenReport:
 
     def __init__(self, data: Dict[str, Any]) -> None:
         self._raw          = data
+        self.request_id    = data.get("request_id", data.get("batch_id", ""))
         self.status        = data.get("status", "PASS")
         self.health_score  = float(data.get("health_score", 1.0))
+        self.decision      = data.get("decision", {})
+        self.schema        = data.get("schema", {})
         self.issues        = data.get("issues", {})
         self.drift         = data.get("drift", [])
         self.stats         = data.get("stats", {})
         self.schema_fingerprint = data.get("schema_fingerprint", "")
         self.latency_ms    = data.get("latency_ms", 0)
-        self.batch_id      = data.get("batch_id", "")
+        self.batch_id      = self.request_id
         self.timestamp     = data.get("timestamp", "")
 
     # ── Convenience properties ──────────────────────────────
@@ -71,12 +74,35 @@ class ScreenReport:
     @property
     def null_rates(self) -> Dict[str, float]:
         """Dict of column → null rate for columns above threshold."""
-        return self.issues.get("null_rates", {})
+        raw = self.issues.get("null_rates", {})
+        # Support both new format {col: {actual: 0.5}} and legacy {col: 0.5}
+        result = {}
+        for col, val in raw.items():
+            if isinstance(val, dict):
+                result[col] = val.get("actual", val.get("value", 0))
+            else:
+                result[col] = val
+        return result
 
     @property
     def type_mismatches(self) -> List[str]:
         """List of columns with type mismatch issues."""
-        return self.issues.get("type_mismatches", [])
+        raw = self.issues.get("type_mismatches", {})
+        # Support both new format {col: {...}} and legacy [col1, col2]
+        if isinstance(raw, dict):
+            return list(raw.keys())
+        return raw if isinstance(raw, list) else []
+
+    @property
+    def type_mismatch_details(self) -> Dict[str, Any]:
+        """Full type mismatch details including expected, found, sample_value, severity."""
+        raw = self.issues.get("type_mismatches", {})
+        return raw if isinstance(raw, dict) else {}
+
+    @property
+    def null_rate_details(self) -> Dict[str, Any]:
+        """Full null rate details including actual, threshold, severity."""
+        return self.issues.get("null_rates", {})
 
     @property
     def outlier_fields(self) -> List[str]:
