@@ -4,7 +4,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-Pipelines don’t fail — they silently corrupt data.
+Most data pipelines don’t fail — they silently corrupt production data, break dashboards, and go unnoticed for days.
 
 DataScreenIQ acts as a gate before your database, detecting schema drift,
 missing values, and type mismatches in real time.
@@ -263,6 +263,21 @@ except PlanLimitError as e:
 ```
 
 ---
+
+## Why DataScreenIQ exists
+
+• Dashboards break AFTER bad data is already stored
+• Data tests are usually batch-based and too late
+• Silent corruption is the most expensive failure in data systems
+
+DataScreenIQ moves validation to the edge — before storage, before transformation, before damage.
+
+## Why thrust this
+
+Built for production workloads:
+• Handles 1M+ rows via auto-chunking
+• Parallel validation engine
+• Sub-second latency decisions
 
 ## Pricing
 
