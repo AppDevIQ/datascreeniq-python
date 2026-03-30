@@ -227,6 +227,43 @@ class Client:
         )
         return resp.json()
 
+    def reset_baseline(self, source: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Reset the schema baseline for a source so the next screen call
+        treats it as a fresh dataset.
+
+        Args:
+            source: Source name to reset (e.g. "orders").
+                    If None, resets ALL sources for your account.
+
+        Returns:
+            Dict with ok, reset, message fields.
+
+        Example:
+            # Reset a specific source
+            client.reset_baseline("orders")
+
+            # Reset all sources
+            client.reset_baseline()
+
+            # Next screen call now treats it as fresh
+            report = client.screen(rows, source="orders")
+            # → BLOCK on first run with bad data
+        """
+        url = (
+            f"{self.base_url}/v1/schema/{source}"
+            if source
+            else f"{self.base_url}/v1/schema"
+        )
+        resp = self._session.delete(url, timeout=self.timeout)
+
+        if resp.status_code == 401:
+            raise AuthenticationError("Invalid API key.")
+        if not resp.ok:
+            raise APIError(f"Reset failed (HTTP {resp.status_code})")
+
+        return resp.json()
+
     # ──────────────────────────────────────────────────────────
     #  Chunked screening for large datasets
     # ──────────────────────────────────────────────────────────
