@@ -1,5 +1,9 @@
 # DataScreenIQ Python SDK
 
+[![PyPI version](https://badge.fury.io/py/datascreeniq.svg)](https://pypi.org/project/datascreeniq/)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://python.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
 Real-time data quality screening at the edge. Screen any data payload and get **PASS / WARN / BLOCK** in under 10ms.
 
 ```python
