@@ -10,7 +10,7 @@
 
 <p align="center">
   <b>Stop bad data before it enters your pipeline.</b><br>
-  Real-time schema drift detection and data quality screening — returns PASS / WARN / BLOCK in under 10ms.
+  Real-time schema drift detection and data quality screening — returns PASS / WARN / BLOCK in milli seconds.
 </p>
 
 ---
