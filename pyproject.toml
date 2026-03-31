@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datascreeniq"
-version = "1.0.3"
+version = "1.0.4"
 description = "Real-time data quality screening API — PASS / WARN / BLOCK in under 10ms"
 readme = "README.md"
 license = { text = "MIT" }
@@ -19,4 +19,9 @@ all    = ["pandas>=1.3.0", "openpyxl>=3.0.0"]
 [project.urls]
 Homepage      = "https://datascreeniq.com"
 Documentation = "https://datascreeniq.com/docs"
-Source        = "https://github.com/datascreeniq/datascreeniq-python"
+Source        = "https://github.com/AppDevIQ/datascreeniq-python"
+Tracker       = "https://github.com/AppDevIQ/datascreeniq-python/issues"
+Privacy       = "https://datascreeniq.com/privacy"
+
+[tool.setuptools.packages.find]
+exclude = ["tests*", "examples*"]
