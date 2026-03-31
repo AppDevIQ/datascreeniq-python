@@ -269,6 +269,16 @@ curl -X POST https://api.datascreeniq.com/v1/screen \
 
 ---
 
+## ⚡ Try instantly (no setup)
+
+👉 [Run in Hoppscotch](https://hopp.sh/r/IfFQDztvgSDD)
+
+1. Paste your API key
+2. Click Send
+3. See PASS / WARN / BLOCK instantly
+
+---
+
 ## Large files — auto chunking
 
 Files over 10,000 rows are automatically split and screened in parallel. Results are merged into a single `ScreenReport`:
