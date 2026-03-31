@@ -421,7 +421,7 @@ What we store (permanently): schema fingerprints (SHA-256 hashes), null rates, t
 - [PyPI package](https://pypi.org/project/datascreeniq/)
 - [Changelog](https://github.com/AppDevIQ/datascreeniq-python/releases)
 
-Questions → [api@datascreeniq.com](mailto:app@datascreeniq.com) or [open an issue](https://github.com/AppDevIQ/datascreeniq-python/issues)
+Questions → [app@datascreeniq.com](mailto:app@datascreeniq.com) or [open an issue](https://github.com/AppDevIQ/datascreeniq-python/issues)
 
 ---
 
