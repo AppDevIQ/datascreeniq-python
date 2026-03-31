@@ -271,7 +271,7 @@ curl -X POST https://api.datascreeniq.com/v1/screen \
 
 ## ⚡ Try instantly (no setup)
 
-👉 [Run in Hoppscotch](https://hopp.sh/r/IfFQDztvgSDD)
+👉 [Run in Hoppscotch](https://hopp.sh/r/iz3I5azNRZY4)
 
 1. Paste your API key
 2. Click Send
