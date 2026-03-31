@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datascreeniq"
-version = "1.0.2"
+version = "1.0.3"
 description = "Real-time data quality screening API — PASS / WARN / BLOCK in under 10ms"
 readme = "README.md"
 license = { text = "MIT" }
