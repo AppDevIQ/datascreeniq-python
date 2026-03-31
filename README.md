@@ -3,27 +3,29 @@
 <p align="center">
   <img src="https://img.shields.io/pypi/v/datascreeniq?color=0b5c42&label=PyPI&logo=pypi&logoColor=white" alt="PyPI version">
   <img src="https://img.shields.io/pypi/pyversions/datascreeniq?color=0b5c42" alt="Python 3.8+">
-  <img src="https://img.shields.io/pypi/dm/datascreeniq?color=0b5c42&label=installs" alt="Monthly installs">
+  <img src="https://img.shields.io/pypi/dm/datascreeniq?color=0b5c42&label=installs%2Fmonth" alt="Monthly installs">
   <img src="https://img.shields.io/badge/license-MIT-0b5c42" alt="MIT License">
   <img src="https://img.shields.io/badge/response-<10ms-059669" alt="Sub-10ms">
 </p>
 
 <p align="center">
-  <b>Most data pipelines don’t fail — they silently corrupt production data, break dashboards, and go unnoticed for days.</b><br>
-  Real-time data quality screening at the edge. Screen any data payload and get **PASS / WARN / BLOCK** in milli seconds.
+  <b>Stop bad data before it enters your pipeline.</b><br>
+  Real-time schema drift detection and data quality screening — returns PASS / WARN / BLOCK in under 10ms.
 </p>
 
 ---
 
 ## The problem
 
-Your pipeline ran successfully last night. The dashboard is broken this morning. Somewhere between your upstream API and your database, a field went null, a type changed, or a schema drifted — and nothing caught it.
+Your pipeline ran successfully last night. The dashboard is broken this morning.
 
-DataScreenIQ sits between your data sources and your storage. Every payload is screened before it touches a database.
+Somewhere between your upstream API and your database, a field went null, a type changed, a schema drifted, or a timestamp went stale — and nothing caught it. Data quality tools are almost always batch-based. They run *after* the `INSERT`. By the time Great Expectations or dbt tests flag an issue, bad rows have been in production for hours.
+
+DataScreenIQ moves the check to the ingest boundary — **before storage, before transformation, before damage.**
 
 ```
 Your API → DataScreenIQ → PASS ✓ → Database
-                        → WARN ⚠ → Quarantine
+                        → WARN ⚠ → Quarantine / flag
                         → BLOCK ✗ → Dead-letter queue
 ```
 
@@ -68,21 +70,112 @@ print(report.summary())
 # 🚨 BLOCK | Health: 34.0% | Rows: 3 | Type mismatches: amount | Null rate: email=67% | (7ms)
 ```
 
-**Response in ~7ms. No polling. No async setup.**
-
 ---
 
 ## What gets detected
 
-| Signal | What it catches |
-|--------|----------------|
-| **Schema drift** | Fields added, removed, or renamed since last batch |
-| **Type instability** | `amount` was `float`, now it's `"broken"` (string) |
-| **Null rate spikes** | `email` completeness dropped from 100% → 33% |
-| **Distribution shifts** | `amount` p95 jumped from $500 to $148,000 |
-| **Duplicate cardinality** | `order_id` distinct count collapsed — likely duplication |
+The engine runs a **single-pass column analysis** on a deterministically-sampled subset of your rows. Every check is computed in-memory — no data is written anywhere.
 
-Detection is statistical and runs in-memory at the edge. Raw data is **never stored**.
+### Column-level checks (per field, per batch)
+
+| Check | What it catches | Default threshold |
+|-------|----------------|-------------------|
+| **Null rate** | Fields with too many missing values | WARN ≥ 30%, BLOCK ≥ 70% |
+| **Type mismatch** | Fields where values aren't a consistent type | WARN ≥ 5%, BLOCK ≥ 20% |
+| **Empty string rate** | Fields full of `""` instead of `null` | WARN ≥ 30%, BLOCK ≥ 60% |
+| **Duplicate rate** | Cardinality collapse — rows repeating unexpectedly | WARN > 10% |
+| **Outliers (IQR)** | Numeric values beyond 1.5× interquartile range | Reported |
+| **Percentiles** | p25 / p50 / p75 / p95 for every numeric field | Reported |
+| **Distinct count** | Approximate unique values via HyperLogLog (±2%) | Reported |
+| **Enum tracking** | Low-cardinality string fields tracked for new values | Reported |
+| **Timestamp detection** | ISO 8601 / date fields auto-detected | Reported |
+| **Timestamp staleness** | Most recent timestamp older than expected | WARN ≥ 24h, BLOCK ≥ 72h |
+
+### Drift detection (compared against your baseline)
+
+After the first batch, every subsequent batch is compared against your stored schema and baselines:
+
+| Drift kind | What triggers it | Severity |
+|-----------|-----------------|---------|
+| `field_added` | New field not in previous schema | WARN |
+| `field_removed` | Known field missing from this batch | WARN |
+| `type_changed` | Field type changed (e.g. `number` → `string`) | BLOCK |
+| `null_spike` | Null rate increased >20% from baseline | WARN / BLOCK |
+| `empty_string_spike` | Empty string rate spiked | WARN / BLOCK |
+| `new_enum_value` | New value appeared in a low-cardinality field | WARN |
+| `row_count_anomaly` | Batch size deviates >3× from historical average | WARN / BLOCK |
+| `timestamp_stale` | Most recent timestamp is unexpectedly old | WARN / BLOCK |
+
+### Verdict logic
+
+```
+Any BLOCK-severity drift event       → BLOCK
+Health score < 0.5                   → BLOCK
+Health score < 0.8 or any WARN event → WARN
+Everything clean                     → PASS
+```
+
+---
+
+## Full response structure
+
+```json
+{
+  "status": "BLOCK",
+  "health_score": 0.34,
+  "decision": {
+    "action": "BLOCK",
+    "reason": "Type mismatch in: 'amount'; High null rate in 'email' (67%)"
+  },
+  "schema": {
+    "order_id": { "type": "string",  "confidence": 1.0 },
+    "amount":   { "type": "number",  "confidence": 0.67 },
+    "email":    { "type": "string",  "confidence": 1.0 }
+  },
+  "schema_fingerprint": "a3f8c2...",
+  "drift": [
+    {
+      "field": "user_age",
+      "kind": "field_added",
+      "severity": "warn",
+      "detail": "New field \"user_age\" (type: number) not in previous schema"
+    }
+  ],
+  "issues": {
+    "type_mismatches": {
+      "amount": {
+        "expected": "number",
+        "found": ["string"],
+        "sample_value": "broken",
+        "rate": 0.33,
+        "severity": "critical"
+      }
+    },
+    "null_rates": {
+      "email": { "actual": 0.67, "threshold": 0.3, "severity": "critical" }
+    }
+  },
+  "stats": {
+    "rows_received": 3,
+    "rows_sampled": 3,
+    "sample_ratio": 1.0,
+    "sample_version": "v2",
+    "source": "orders"
+  },
+  "latency_ms": 7,
+  "timestamp": "2025-06-01T09:14:22.000Z"
+}
+```
+
+**Response headers** also carry key signals for lightweight pipeline integration:
+
+```
+X-DataScreenIQ-Status:   BLOCK
+X-DataScreenIQ-Health:   0.34
+X-DataScreenIQ-Latency:  7ms
+X-RateLimit-Plan:        developer
+X-RateLimit-Remaining:   498234
+```
 
 ---
 
@@ -129,7 +222,7 @@ def screen_data(rows, source):
 @flow
 def etl_pipeline():
     rows = extract_from_source()
-    screen_data(rows, source="orders")   # raises if blocked
+    screen_data(rows, source="orders")   # raises DataQualityError if BLOCK
     load_to_warehouse(rows)
 ```
 
@@ -159,21 +252,54 @@ def screen_dbt_model(model_name: str, conn):
 
 ```python
 report = client.screen_file("orders.csv",  source="orders")
-report = client.screen_file("orders.xlsx", source="orders", sheet=0)  # [excel]
+report = client.screen_file("orders.xlsx", source="orders", sheet=0)  # requires [excel]
 report = client.screen_file("events.json", source="events")
 report = client.screen_file("feed.xml",    source="feed")
+```
+
+### CSV via raw HTTP (no SDK)
+
+```bash
+curl -X POST https://api.datascreeniq.com/v1/screen \
+  -H "X-API-Key: YOUR_KEY" \
+  -H "Content-Type: text/csv" \
+  -H "X-Source: orders" \
+  --data-binary @orders.csv
 ```
 
 ---
 
 ## Large files — auto chunking
 
-Files over 10,000 rows are automatically split and screened in parallel. Results are merged into a single report:
+Files over 10,000 rows are automatically split and screened in parallel. Results are merged into a single `ScreenReport`:
 
 ```python
-# 1M-row file — runs as 100 parallel API calls, one merged ScreenReport
+# 1M-row file — runs as parallel batches, one merged result
 report = client.screen_file("events.csv", source="events")
 print(f"Screened {report.rows_received:,} rows in {report.latency_ms}ms")
+```
+
+---
+
+## Custom thresholds
+
+Override the defaults per request:
+
+```python
+report = client.screen(
+    rows,
+    source="orders",
+    options={
+        "thresholds": {
+            "null_rate_warn":       0.1,   # warn if >10% nulls (default: 0.3)
+            "null_rate_block":      0.5,   # block if >50% nulls (default: 0.7)
+            "type_mismatch_warn":   0.01,  # warn if >1% type mismatches (default: 0.05)
+            "type_mismatch_block":  0.1,   # block if >10% (default: 0.2)
+            "health_block":         0.6,   # block if health score < 0.6 (default: 0.5)
+            "health_warn":          0.9,   # warn if health score < 0.9 (default: 0.8)
+        }
+    }
+)
 ```
 
 ---
@@ -181,32 +307,33 @@ print(f"Screened {report.rows_received:,} rows in {report.latency_ms}ms")
 ## The ScreenReport object
 
 ```python
-# Decision
+# Verdict
 report.status           # "PASS" | "WARN" | "BLOCK"
 report.is_pass          # bool
 report.is_warn          # bool
 report.is_blocked       # bool
-report.health_score     # 0.0 – 1.0
+report.health_score     # float 0.0 – 1.0
 report.health_pct       # "94.5%"
 
-# Issues
+# Issues (from actual response fields)
 report.issues           # full issues dict
-report.type_mismatches  # ["amount", "price"]
-report.null_rates       # {"email": 0.50, "phone": 0.12}
-report.outlier_fields   # ["amount"]
+report.type_mismatches  # list of field names with type problems
+report.null_rates       # dict of field → null rate (only fields above threshold)
+report.outlier_fields   # list of field names with outliers
 
 # Schema drift
-report.drift            # list of drift events
+report.drift            # list of DriftEvent dicts
 report.drift_count      # int
 report.has_drift        # bool
 
-# Metadata
-report.rows_received    # int
-report.rows_sampled     # int
+# Sampling metadata (auditable)
+report.rows_received    # int — total rows in your batch
+report.rows_sampled     # int — rows actually analysed
+report.sample_ratio     # float — fraction sampled
+report.sample_version   # "v2" — sampling strategy version
 report.latency_ms       # int
-report.batch_id         # str (uuid)
+report.batch_id         # str (uuid, same as request_id)
 report.timestamp        # ISO 8601 string
-report.sample_version   # "v2" — auditable sampling strategy
 
 # Output
 report.summary()        # human-readable one-liner
@@ -220,57 +347,47 @@ report.to_dict()        # full API response as dict
 ```python
 from datascreeniq.exceptions import (
     AuthenticationError,   # invalid or missing API key
-    PlanLimitError,        # monthly row limit exceeded
-    RateLimitError,        # too many requests — retry with backoff
-    ValidationError,       # malformed payload
+    PlanLimitError,        # monthly row limit exceeded — response includes upgrade_url
+    RateLimitError,        # too many concurrent requests
+    ValidationError,       # bad payload (missing source, empty rows, >100K rows)
     APIError,              # unexpected server error
-    DataQualityError,      # raised by .raise_on_block()
+    DataQualityError,      # raised by .raise_on_block() — has .report attribute
 )
 
 try:
     report = client.screen(rows, source="orders")
 except AuthenticationError:
     print("Invalid API key — check DATASCREENIQ_API_KEY")
-except PlanLimitError:
-    print("Monthly limit reached — upgrade at datascreeniq.com/pricing")
-except RateLimitError as e:
-    print(f"Rate limited — retry after {e.retry_after}s")
+except PlanLimitError as e:
+    print(f"Monthly limit reached — upgrade at {e.upgrade_url}")
+except ValidationError as e:
+    print(f"Bad payload: {e}")   # e.g. rows > 100,000 limit
 ```
 
 ---
 
 ## Configuration
 
-```python
-# From environment variable (recommended for production)
+```bash
+# Recommended: environment variable
 export DATASCREENIQ_API_KEY="dsiq_live_..."
-
-client = dsiq.Client()   # reads env automatically
 ```
 
 ```python
-# Explicit key
-client = dsiq.Client("dsiq_live_...")
-
-# Custom timeout (default: 30s)
-client = dsiq.Client(timeout=10)
+client = dsiq.Client()              # reads DATASCREENIQ_API_KEY from env
+client = dsiq.Client("dsiq_live_...") # explicit key
+client = dsiq.Client(timeout=10)    # custom timeout in seconds (default: 30)
 ```
 
 ---
 
 ## Privacy
 
-DataScreenIQ processes data **in-memory only** at the edge (Cloudflare Workers). Raw payload values are discarded immediately after statistical analysis. We retain only aggregated quality signals — null rates, type distributions, schema hashes. No row-level data, no PII, ever.
+DataScreenIQ runs on **Cloudflare Workers** — a serverless edge runtime with no filesystem access. Your raw payload is processed entirely in-memory and physically cannot be written to disk at the edge layer.
+
+What we store (permanently): schema fingerprints (SHA-256 hashes), null rates, type distributions, and quality scores — aggregated statistics only. No row-level data, no field values, no PII, ever.
 
 → [Full privacy architecture](https://datascreeniq.com/privacy)
-
----
-
-## Why this exists
-
-Data quality tools are almost always batch-based — they run *after* data is already in your warehouse. By the time Great Expectations or dbt tests flag an issue, bad rows have been in production for hours.
-
-DataScreenIQ moves validation to the ingest boundary. The check happens before `INSERT`, before transformation, before the dashboard query that returns NaN at 9am.
 
 ---
 
@@ -287,14 +404,24 @@ DataScreenIQ moves validation to the ingest boundary. The check happens before `
 
 ---
 
+## Requirements
+
+- Python 3.8+
+- `requests` (auto-installed)
+- `pandas` — optional, for `screen_dataframe()`
+- `openpyxl` — optional, for Excel files
+
+---
+
 ## See also
 
-- [Examples directory](./examples/) — Airflow DAG, Prefect flow, pandas pipeline, dbt hook
-- [Full API reference](https://datascreeniq.com/docs)
+- [Examples](./examples/) — Airflow DAG, Prefect flow, pandas pipeline, dbt hook
+- [API reference](https://datascreeniq.com/docs)
 - [Privacy architecture](https://datascreeniq.com/privacy)
 - [PyPI package](https://pypi.org/project/datascreeniq/)
+- [Changelog](https://github.com/AppDevIQ/datascreeniq-python/releases)
 
-Questions or issues → [api@datascreeniq.com](mailto:api@datascreeniq.com) or [open an issue](https://github.com/AppDevIQ/datascreeniq-python/issues)
+Questions → [api@datascreeniq.com](mailto:api@datascreeniq.com) or [open an issue](https://github.com/AppDevIQ/datascreeniq-python/issues)
 
 ---
 
