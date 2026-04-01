@@ -5,7 +5,7 @@ with open("README.md", encoding="utf-8") as f:
 
 setup(
     name="datascreeniq",
-    version="1.0.6",
+    version="1.0.7",
     description="Real-time data quality screening API — PASS / WARN / BLOCK in milli seconds",
     long_description=long_description,
     long_description_content_type="text/markdown",
