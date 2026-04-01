@@ -271,12 +271,29 @@ curl -X POST https://api.datascreeniq.com/v1/screen \
 
 ## ⚡ Try instantly (no setup)
 
-👉 [Run in Hoppscotch](https://hopp.sh/r/iz3I5azNRZY4)
+👉 [![Run in Hoppscotch](https://img.shields.io/badge/Run%20in-Hoppscotch-0b5c42?logo=hoppscotch&logoColor=white)](https://hoppscotch.io/?method=POST&url=https%3A%2F%2Fapi.datascreeniq.com%2Fv1%2Fscreen&headers=%5B%7B%22key%22%3A%22X-API-Key%22%2C%22value%22%3A%22YOUR_API_KEY_HERE%22%7D%2C%7B%22key%22%3A%22Content-Type%22%2C%22value%22%3A%22application%2Fjson%22%7D%5D&body=%7B%22source%22%3A%22orders%22%2C%22rows%22%3A%5B%7B%22order_id%22%3A%22ORD-001%22%2C%22amount%22%3A99.5%2C%22email%22%3A%22alice%40corp.com%22%7D%2C%7B%22order_id%22%3A%22ORD-002%22%2C%22amount%22%3A150.0%2C%22email%22%3A%22bob%40corp.com%22%7D%5D%7D)
 
-1. Paste your API key
+1. Paste your API key, Update the JSON from below in the Body
 2. Click Send
 3. See PASS / WARN / BLOCK instantly
 
+```JSON
+{
+  "source": "orders",
+  "rows": [
+    {
+      "order_id": "ORD-001",
+      "amount": 99.5,
+      "email": "alice@corp.com"
+    },
+    {
+      "order_id": "ORD-002",
+      "amount": 150.0,
+      "email": "bob@corp.com"
+    }
+  ]
+}
+```
 ---
 
 ## Large files — auto chunking
