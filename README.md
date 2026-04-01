@@ -266,6 +266,11 @@ curl -X POST https://api.datascreeniq.com/v1/screen \
   -H "X-Source: orders" \
   --data-binary @orders.csv
 ```
+---
+
+## Run the DataScreenIQ API in Postman
+
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://www.postman.com/vignesh-datascreeniq-3090309/datascreeniq-s-workspace/)
 
 ---
 
