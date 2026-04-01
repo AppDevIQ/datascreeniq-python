@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "name": "DataScreenIQ API",
+  "requests": [
+    {
+      "name": "Screen Data",
+      "method": "POST",
+      "url": "https://api.datascreeniq.com/v1/screen",
+      "headers": [
+        { "key": "X-API-Key", "value": "YOUR_API_KEY_HERE" },
+        { "key": "Content-Type", "value": "application/json" }
+      ],
+      "body": {
+        "type": "json",
+        "raw": {
+          "source": "orders",
+          "rows": [
+            { "order_id": "ORD-001", "amount": 99.5, "email": "alice@corp.com" },
+            { "order_id": "ORD-002", "amount": 150.0, "email": "bob@corp.com" },
+			{ "order_id": "ORD-003", "amount": "abc", "email": "bob@corp.com" }
+          ]
+        }
+      }
+    }
+  ]
+}
