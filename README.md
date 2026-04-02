@@ -29,6 +29,33 @@ Your API → DataScreenIQ → PASS ✓ → Database
                         → BLOCK ✗ → Dead-letter queue
 ```
 
+--- 
+
+## 🚨 See it in action (no setup)
+
+Run this immediately:
+
+```python
+import datascreeniq as dsiq
+
+client = dsiq.DemoClient()
+
+result = client.screen([
+    {"email": "ok@corp.com", "amount": 100},
+    {"email": None, "amount": "broken"}
+])
+
+print(result.summary())
+```
+
+### You’ll get:
+
+```
+🚨 BLOCK | Health: 34% | Type mismatch: amount | Null rate: email=67% (7ms)
+```
+
+👉 This is what happens in production pipelines without protection.
+
 ---
 
 ## Install
