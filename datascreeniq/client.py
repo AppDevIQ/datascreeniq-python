@@ -35,7 +35,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from . import __version__
+from .version import __version__
 from .models import ScreenReport
 from .exceptions import (
     DataScreenIQError,

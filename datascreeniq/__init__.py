@@ -21,7 +21,7 @@ Quick start:
 Docs: https://datascreeniq.com/docs
 """
 
-from importlib.metadata import version, PackageNotFoundError
+from .version import __version__
 
 from .client import Client
 from .models import ScreenReport
@@ -35,14 +35,6 @@ from .exceptions import (
     DataQualityError,
 )
 
-# -----------------------------
-# Version (auto-sync with package)
-# -----------------------------
-try:
-    __version__ = version("datascreeniq")
-except PackageNotFoundError:
-    __version__ = "unknown"
-
 __all__ = [
     "Client",
     "ScreenReport",
@@ -53,4 +45,5 @@ __all__ = [
     "ValidationError",
     "APIError",
     "DataQualityError",
+    "__version__",
 ]
