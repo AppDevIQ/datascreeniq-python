@@ -8,6 +8,14 @@
   <img src="https://img.shields.io/badge/response-<10ms-059669" alt="Sub-10ms">
 </p>
 
+---
+
+[![GitHub stars](https://img.shields.io/github/stars/AppDevIQ/datascreeniq-python?style=social)](https://github.com/AppDevIQ/datascreeniq-python/stargazers)
+
+If you find this useful, please ⭐ the repo — it helps support the project and improves our visibility in API directories.
+
+---
+
 <p align="center">
   <b>Stop bad data before it enters your pipeline.</b><br>
   Real-time schema drift detection and data quality screening — returns PASS / WARN / BLOCK in milli seconds.
