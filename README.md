@@ -29,7 +29,20 @@ Your API → DataScreenIQ → PASS ✓ → Database
                         → BLOCK ✗ → Dead-letter queue
 ```
 
---- 
+---
+ 
+## 🚀 Requires an API key (free, instant)
+
+DataScreenIQ is an **API‑backed screening engine**.  
+You need a free API key to run your first screen.
+
+👉 **Get your key in under 30 seconds:**  
+**https://datascreeniq.com**
+
+✅ Free tier: **500,000 rows / month**  
+✅ No credit card required
+
+---
 
 ## 🚨 See it in action (no setup)
 
