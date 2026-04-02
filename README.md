@@ -69,7 +69,21 @@ print(result.summary())
 
 👉 This is what happens in production pipelines without protection.
 
----
+--- 
+
+## What happens if you don’t set an API key?
+
+```python
+import datascreeniq as dsiq
+dsiq.Client().screen(rows)
+```
+
+❌ Raises:
+
+```
+AuthenticationError: Missing API key.
+Get one free at https://datascreeniq.com
+```
 
 ## Install
 
