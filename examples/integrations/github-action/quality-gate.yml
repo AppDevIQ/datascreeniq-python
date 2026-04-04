@@ -1,0 +1,149 @@
+# ═══════════════════════════════════════════════════════════════
+#  DataScreenIQ — GitHub Action: Data Quality Gate
+#
+#  Screens CSV and JSON files on every pull request.
+#  Blocks the PR if any file returns a BLOCK verdict.
+#
+#  Setup:
+#    1. Add your API key as a repository secret: DATASCREENIQ_API_KEY
+#    2. Copy this file to .github/workflows/quality-gate.yml
+#    3. Push — the action runs automatically on PRs with data files
+#
+#  Get a free API key (500K rows/month): https://datascreeniq.com
+# ═══════════════════════════════════════════════════════════════
+
+name: Data Quality Gate
+
+on:
+  pull_request:
+    paths:
+      - '**.csv'
+      - '**.json'
+      - '**.xlsx'
+      - 'data/**'
+      - 'fixtures/**'
+      - 'seeds/**'
+
+jobs:
+  screen:
+    name: Screen data files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need full history for diff
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install DataScreenIQ
+        run: pip install datascreeniq
+
+      - name: Find changed data files
+        id: files
+        run: |
+          # Get list of added/modified data files in this PR
+          FILES=$(git diff --name-only --diff-filter=AM origin/${{ github.base_ref }}...HEAD \
+            | grep -E '\.(csv|json|xlsx)$' || true)
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          if [ -z "$FILES" ]; then
+            echo "No data files changed in this PR."
+          else
+            echo "Found data files to screen:"
+            echo "$FILES"
+          fi
+
+      - name: Screen data files
+        if: steps.files.outputs.files != ''
+        env:
+          DATASCREENIQ_API_KEY: ${{ secrets.DATASCREENIQ_API_KEY }}
+        run: |
+          python - <<'PYTHON_SCRIPT'
+          import sys
+          import os
+          import datascreeniq as dsiq
+          from datascreeniq.exceptions import DataQualityError
+
+          files_str = """${{ steps.files.outputs.files }}"""
+          files = [f.strip() for f in files_str.strip().split('\n') if f.strip()]
+
+          if not files:
+              print("No data files to screen.")
+              sys.exit(0)
+
+          client = dsiq.Client()
+          blocked = []
+          warned = []
+          passed = []
+
+          for filepath in files:
+              if not os.path.exists(filepath):
+                  print(f"⏭️  Skipping {filepath} (file not found)")
+                  continue
+
+              source = os.path.splitext(os.path.basename(filepath))[0]
+              print(f"\n{'='*60}")
+              print(f"Screening: {filepath}")
+              print(f"{'='*60}")
+
+              try:
+                  report = client.screen_file(filepath, source=source)
+                  print(report.summary())
+
+                  if report.is_blocked:
+                      blocked.append((filepath, report))
+                  elif report.is_warn:
+                      warned.append((filepath, report))
+                  else:
+                      passed.append((filepath, report))
+
+              except Exception as e:
+                  print(f"❌ Error screening {filepath}: {e}")
+                  blocked.append((filepath, None))
+
+          # Print summary
+          print(f"\n{'='*60}")
+          print(f"QUALITY GATE SUMMARY")
+          print(f"{'='*60}")
+          print(f"✅ Passed:  {len(passed)}")
+          print(f"⚠️  Warned:  {len(warned)}")
+          print(f"🚨 Blocked: {len(blocked)}")
+
+          if blocked:
+              print("\n🚨 BLOCKED FILES:")
+              for filepath, report in blocked:
+                  if report:
+                      print(f"  • {filepath}: {report.summary()}")
+                  else:
+                      print(f"  • {filepath}: screening error")
+              print("\n❌ Quality gate FAILED — fix the issues above before merging.")
+              sys.exit(1)
+
+          if warned:
+              print("\n⚠️  Files with warnings (not blocking):")
+              for filepath, report in warned:
+                  print(f"  • {filepath}: {report.summary()}")
+
+          print("\n✅ Quality gate PASSED")
+          PYTHON_SCRIPT
+
+      - name: Post PR comment with results
+        if: always() && steps.files.outputs.files != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            // The step above already prints a clear summary
+            // This comment just links to the action run for details
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🛡️ **DataScreenIQ Quality Gate** — [View results](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            });
