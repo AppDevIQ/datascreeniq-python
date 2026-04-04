@@ -8,6 +8,10 @@
   <img src="https://img.shields.io/badge/response-<10ms-059669" alt="Sub-10ms">
 </p>
 
+<p align="center">
+  <a href="https://colab.research.google.com/github/AppDevIQ/datascreeniq-python/blob/main/examples/integrations/colab/datascreeniq_demo.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"></a>
+</p>
+
 ---
 
 [![GitHub stars](https://img.shields.io/github/stars/AppDevIQ/datascreeniq-python?style=social)](https://github.com/AppDevIQ/datascreeniq-python/stargazers)
