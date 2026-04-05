@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="datascreeniq",
-    version="1.0.11",  # MUST match pyproject.toml
+    version="1.0.12",  # MUST match pyproject.toml
     packages=find_packages(exclude=["tests*", "examples*"]),
     install_requires=[
         "requests>=2.28.0",

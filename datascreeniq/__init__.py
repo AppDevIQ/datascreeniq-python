@@ -18,12 +18,19 @@ Quick start:
     print(report.health_score)  # 0.0 – 1.0
     print(report.issues)        # detected quality issues
 
+Demo (no API key needed):
+
+    client = dsiq.DemoClient()
+    report = client.screen(rows, source="demo")
+    print(report.summary())
+
 Docs: https://datascreeniq.com/docs
 """
 
 from .version import __version__
 
 from .client import Client
+from .demo import DemoClient
 from .models import ScreenReport
 from .exceptions import (
     DataScreenIQError,
@@ -37,6 +44,7 @@ from .exceptions import (
 
 __all__ = [
     "Client",
+    "DemoClient",
     "ScreenReport",
     "DataScreenIQError",
     "AuthenticationError",
