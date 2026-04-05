@@ -81,6 +81,9 @@ print(result.summary())
 
 👉 This is what happens in production pipelines without protection.
 
+![DataScreenIQ SDK screening a batch from the terminal](DatascreenIQ.gif)
+*Screening a data batch with the Python SDK — type mismatch and null spike detected, BLOCK verdict in 7ms*
+
 --- 
 
 ## What happens if you don’t set an API key?
