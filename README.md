@@ -382,26 +382,78 @@ print(f"Screened {report.rows_received:,} rows in {report.latency_ms}ms")
 
 ---
 
-## Custom thresholds
+## Configurable thresholds
 
-Override the defaults per request:
+### Per-source threshold overrides
+
+A single global threshold applied to every source is rarely right. `payments.amount`
+should BLOCK at 1% null. `events.user_agent` might be fine at 40% null. Applying the
+same rule to both creates alert fatigue on one pipeline and silent failures on another.
+
+DataScreenIQ supports a four-level priority chain:
+
+```
+1. Inline threshold in API request    → highest priority (per-call override)
+2. Saved per-source override          → set in the dashboard Thresholds tab
+3. Global account defaults            → your account-wide settings
+4. System defaults                    → fallback if nothing else is set
+```
+
+**Option 1 — Inline per request:**
 
 ```python
+# Tight rules for financial data
 report = client.screen(
     rows,
-    source="orders",
+    source="payments",
     options={
         "thresholds": {
-            "null_rate_warn":       0.1,   # warn if >10% nulls (default: 0.3)
-            "null_rate_block":      0.5,   # block if >50% nulls (default: 0.7)
-            "type_mismatch_warn":   0.01,  # warn if >1% type mismatches (default: 0.05)
-            "type_mismatch_block":  0.1,   # block if >10% (default: 0.2)
-            "health_block":         0.6,   # block if health score < 0.6 (default: 0.5)
-            "health_warn":          0.9,   # warn if health score < 0.9 (default: 0.8)
+            "null_rate_warn":      0.01,  # WARN if > 1% nulls
+            "null_rate_block":     0.02,  # BLOCK if > 2% nulls
+            "type_mismatch_warn":  0.0,   # WARN on any type mismatch
+            "type_mismatch_block": 0.01,  # BLOCK if > 1% mismatch
+        }
+    }
+)
+
+# Relaxed rules for event tracking (high null rate is normal here)
+report = client.screen(
+    rows,
+    source="events",
+    options={
+        "thresholds": {
+            "null_rate_warn":  0.50,  # user_agent nulls are expected
+            "null_rate_block": 0.80,
         }
     }
 )
 ```
+
+**Option 2 — Saved per-source overrides (dashboard):**
+
+Set thresholds once in the dashboard **Thresholds** tab, scoped to a specific source.
+Every future call to `source="payments"` automatically applies those saved thresholds,
+falling back to global defaults for anything not explicitly overridden. No code change needed.
+
+Inline thresholds always win over saved thresholds — useful for backfills, migrations,
+or testing new values before committing them.
+
+### All configurable threshold keys
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `null_rate_warn` | `0.3` | WARN if null rate exceeds this |
+| `null_rate_block` | `0.7` | BLOCK if null rate exceeds this |
+| `type_mismatch_warn` | `0.05` | WARN if type mismatch rate exceeds this |
+| `type_mismatch_block` | `0.2` | BLOCK if type mismatch rate exceeds this |
+| `empty_string_warn` | `0.2` | WARN if empty string rate exceeds this |
+| `empty_string_block` | `0.5` | BLOCK if empty string rate exceeds this |
+| `duplicate_warn` | `0.1` | WARN if duplicate rate exceeds this |
+| `duplicate_block` | `0.5` | BLOCK if duplicate rate exceeds this |
+| `health_warn` | `0.8` | WARN if health score falls below this |
+| `health_block` | `0.5` | BLOCK if health score falls below this |
+| `timestamp_stale_warn_hours` | `24` | WARN if most recent timestamp is older than this |
+| `timestamp_stale_block_hours` | `72` | BLOCK if most recent timestamp is older than this |
 
 ---
 
